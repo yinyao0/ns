@@ -1,5 +1,7 @@
 # This script is created by NSG2 beta1
 # <http://wushoupong.googlepages.com/nsg>
+#copyright by yy
+
 
 #===================================
 #     Simulation parameters setup
