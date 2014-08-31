@@ -22,6 +22,9 @@ set val(stop)   30                         ;# time of simulation end
 #===================================
 #        Initialization        
 #===================================
+Mac/802_11 set PLCPDataRate_ 11e6  
+Mac/802_11 set dataRate_ 11.0e6  
+Mac/802_11 set basicRate_ 1.0e6 
 #Create a ns simulator
 set ns [new Simulator]
 
@@ -110,7 +113,7 @@ $ns connect $udp0 $null1
 set cbr0 [new Application/Traffic/CBR]
 $cbr0 attach-agent $udp0
 $cbr0 set packetSize_ 1500
-$cbr0 set rate_ 2Mb
+$cbr0 set rate_ 11Mb
 $cbr0 set random_ null
 $ns at 0.5 "$cbr0 start"
 $ns at 28.0 "$cbr0 stop"
