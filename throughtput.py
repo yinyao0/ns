@@ -20,5 +20,5 @@ total=0
 for p in package:
     total=total+p
 #print total
-throughput=8*total/(etime-stime)/1000
-print "The throughput is %.2f kbps"%throughput
+throughput=8*total/(etime-stime)/1000000
+print "The throughput is %.2f mbps"%throughput
