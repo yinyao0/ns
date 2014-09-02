@@ -6,7 +6,7 @@ def process(line,package):
     action=line.split()[0]
     pack_size=int(line.split()[7])
   
-    if layer=="MAC" and pack_size >= 500:
+    if action =="r" and layer=="MAC" and pack_size >= 500:
        package.append(pack_size) 
     return etime
 
@@ -19,6 +19,6 @@ f.close()
 total=0
 for p in package:
     total=total+p
-print total
-throughput=total/(etime-stime)/1000
+#print total
+throughput=8*total/(etime-stime)/1000
 print "The throughput is %.2f kbps"%throughput
