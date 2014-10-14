@@ -28,7 +28,18 @@ Mac/802_11 set basicRate_ 1.0e6
 #Create a ns simulator
 set ns [new Simulator]
 #the transmit rate
-set rate 1
+set rate 2
+set al 0
+#the number of AP
+set nAP 2
+#the number of STA
+set nSTA [expr $val(nn)-$nAP]
+#the capacity
+set CPA 5.5
+set CPN [expr $CPA*$nAP]
+
+
+
 
 #Setup topography object
 set topo       [new Topography]
@@ -70,14 +81,15 @@ set rng [new RNG]
 $rng seed 0
 set r1 [new RandomVariable/Uniform]  
 $r1 use-rng $rng      
-#ap0's sta                        
-for {set i 0} {$i < 12} {incr i} {            
+#ap0's sta
+set nsta0 12                        
+for {set i 0} {$i < $nsta0} {incr i} {            
   $r1 set min_ 1.3
   $r1 set max_ 2.7   
   set x0($i) [$r1 value]     
   set x0($i) [expr $x0($i)*100]    
 }                      
-for {set i 0} {$i < 12} {incr i} {
+for {set i 0} {$i < $nsta0} {incr i} {
   $r1 set min_ 2.3
   $r1 set max_ 3.7
   set y0($i) [$r1 value]
@@ -86,14 +98,15 @@ for {set i 0} {$i < 12} {incr i} {
 
 
 #the node belong to overlapping area
-for {set i 0} {$i < 5} {incr i} {
-   $r1 set min_ 3.3 
+set nstao 5
+for {set i 0} {$i < $nstao} {incr i} {
+   $r1 set min_ 3.0 
    $r1 set max_ 3.9
    set xo($i) [$r1 value]
    set xo($i) [expr $xo($i)*100]
 }
 
-for {set i 0} {$i < 5} {incr i} {
+for {set i 0} {$i < $nstao} {incr i} {
   $r1 set min_ 2.0
   $r1 set max_ 4.0
   set yo($i) [$r1 value]
@@ -103,45 +116,96 @@ for {set i 0} {$i < 5} {incr i} {
 
 
 #the node belong to ap1
-for {set i 0} {$i < 3} {incr i} {
+set nsta1 3
+for {set i 0} {$i < $nsta1} {incr i} {
    $r1 set min_ 5.0
    $r1 set max_ 6.4
    set x1($i) [$r1 value]
    set x1($i) [expr $x1($i)*100]
 }
 
-for {set i 0} {$i < 3} {incr i} {
+for {set i 0} {$i < $nsta1} {incr i} {
   $r1 set min_ 1.6
   $r1 set max_ 4.4
   set y1($i) [$r1 value]
   set y1($i) [expr $y1($i)*100]
 }
 
-
+#set al 1
 ##########################################################################
 #addmission control and cell breath
-set k 0
-while {1} {
-   if {$k > 5} {
+puts "nAP:$nAP"
+puts "nSTA:$nSTA"
+puts "CPA:$CPA"
+puts "CPN:$CPN"
+#flag of breath
+set flag 0
+set nflow0 0
+set nflowo0 0
+set nflowo1 0
+set nflow1 0
+set acn0 $nsta0
+set acno0 $nstao
+set acno1 0
+set acn1 $nsta1
+#if {$al ==1} {
+for {set i 0} {$i < $nsta0} {incr i} {
+   set nflow0 [expr $nflow0+$rate]
+   if {$nflow0 > $CPA} {
+     set nflow0 [expr $nflow0-$rate]
      break;
    }
-   set k [expr $k+1]
-   puts "continue"
 }
+puts "nflow0:$nflow0"
+if {$i < $nsta0} {
+  set flag 1
+  set acn0  $i
+  set acno0 0
+} else {
+  set flag 0
+  set acn0 $nsta0
+  for {set i 0} {$i < $nstao} {incr i} {
+     set nflowo0 [expr $nflowo0+$rate]
+     if {[expr $nflowo0+$nflow0] > $CPA} {
+       set nflowo0 [$nflowo0-$rate]
+       break
+     }
+  }
+  set acno0 $i
+}
+#al
+#}
+puts "flag:$flag"
+puts "acn0:$acn0"
+puts "acno0:$acno0"
+
+set acno1 [expr $nstao-$acno0]
+set acn1 $nsta1
+puts "acno1:$acno1"
+puts "acn1:$acn1"
 
 ###########################################################################
 
 
 #Create 2 Aps
 #200m
-#Phy/WirelessPhy set Pt_ 0.115441
+if {$al == 0} {
+  Phy/WirelessPhy set Pt_ 0.115441
+} else {
+  Phy/WirelessPhy set Pt_ 0.00721505
+}
 set n(0) [$ns node]
 $n(0) color "red"
 $n(0) set X_ 200
 $n(0) set Y_ 300
 $n(0) set Z_ 0.0
 $ns at 0.01 "$n(0) color red"
-#Phy/WirelessPhy set Pt_ 0.115441
+
+if {$al == 0} {
+  Phy/WirelessPhy set Pt_ 0.115441
+} else {
+  Phy/WirelessPhy set Pt_ 0.281838
+}
 $ns initial_node_pos $n(0) 20
 set n(1) [$ns node]
 $n(1) color "red"
@@ -188,26 +252,86 @@ for {set i 0} {$i < 3} {incr i} {
 #        Agents Definition        
 #===================================
 #Setup a UDP connection
-set udp0 [new Agent/UDP]
-$ns attach-agent $n(0) $udp0
-set null1 [new Agent/Null]
-$ns attach-agent $n(1) $null1
-$ns connect $udp0 $null1
+#ap0
+for {set i 0} {$i < $acn0} {incr i} {
+  set udp0($i) [new Agent/UDP]
+  $ns attach-agent $n(0) $udp0($i)
+  set null0($i) [new Agent/Null]
+  $ns attach-agent $n0($i) $null0($i)
+  $ns connect $udp0($i) $null0($i)
+}
 
+#ap0
+for {set i 0} {$i < $acno0} {incr i} {
+  set udpo0($i) [new Agent/UDP]
+  $ns attach-agent $n(0) $udpo0($i)
+  set nullo0($i) [new Agent/Null]
+  $ns attach-agent $no($i) $nullo0($i)
+  $ns connect $udpo0($i) $nullo0($i)
+}
+
+#ap1
+for {set i 0} {$i < $acno1} {incr i} {
+  set udpo1($i) [new Agent/UDP]
+  $ns attach-agent $n(1) $udpo1($i)
+  set nullo1($i) [new Agent/Null]
+  $ns attach-agent $no([expr $i+$acno0]) $nullo1($i)
+  $ns connect $udpo1($i) $nullo1($i)
+}
+
+#ap1
+for {set i 0} {$i < $acn1} {incr i} {
+  set udp1($i) [new Agent/UDP]
+  $ns attach-agent $n(1) $udp1($i)
+  set null1($i) [new Agent/Null]
+  $ns attach-agent $n1($i) $null1($i)
+  $ns connect $udp1($i) $null1($i)
+}
 
 #===================================
 #        Applications Definition        
 #===================================
 #Setup a CBR Application over UDP connection
-set cbr0 [new Application/Traffic/CBR]
-$cbr0 attach-agent $udp0
-$cbr0 set packetSize_ 1500
-$cbr0 set rate_ [expr $rate*1e6]
-$cbr0 set random_ null
-$ns at 0.5 "$cbr0 start"
-$ns at 28.0 "$cbr0 stop"
+for {set i 0} {$i < $acn0} {incr i} {
+  set cbr0($i) [new Application/Traffic/CBR]
+  $cbr0($i) attach-agent $udp0($i)
+  $cbr0($i) set packetSize_ 1500
+  $cbr0($i) set rate_ [expr $rate*1e6]
+  $cbr0($i) set random_ null
+  $ns at 0.1 "$cbr0($i) start"
+  $ns at 30.0 "$cbr0($i) stop"
+}
+
+for {set i 0} {$i < $acno0} {incr i} {
+  set cbro0($i) [new Application/Traffic/CBR]
+  $cbro0($i) attach-agent $udpo0($i)
+  $cbro0($i) set packetSize_ 1500
+  $cbro0($i) set rate_ [expr $rate*1e6]
+  $cbro0($i) set random_ null
+  $ns at 0.1 "$cbro0($i) start"
+  $ns at 30.0 "$cbro0($i) stop"
+}
+
+for {set i 0} {$i < $acno1} {incr i} {
+  set cbro1($i) [new Application/Traffic/CBR]
+  $cbro1($i) attach-agent $udpo1($i)
+  $cbro1($i) set packetSize_ 1500
+  $cbro1($i) set rate_ [expr $rate*1e6]
+  $cbro1($i) set random_ null
+  $ns at 0.1 "$cbro1($i) start"
+  $ns at 30.0 "$cbro1($i) stop"
+}
 
 
+for {set i 0} {$i < $acn1} {incr i} {
+  set cbr1($i) [new Application/Traffic/CBR]
+  $cbr1($i) attach-agent $udp1($i)
+  $cbr1($i) set packetSize_ 1500
+  $cbr1($i) set rate_ [expr $rate*1e6]
+  $cbr1($i) set random_ null
+  $ns at 0.1 "$cbr1($i) start"
+  $ns at 30.0 "$cbr1($i) stop"
+}
 #===================================
 #        Termination        
 #===================================
